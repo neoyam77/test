@@ -35,6 +35,43 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", brand: "Framboise (프랑브아즈)" });
 });
 
+// Models to try in order of availability and speed
+const CANDIDATE_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+  "gemini-3.1-flash-lite",
+  "gemini-3.8-flash",
+];
+
+function createFallbackProposal(purpose?: string, tone?: string) {
+  const selectedTone = tone || "다정하고 따뜻한 감성체";
+  const selectedPurpose = purpose || "아이방 침실 (수면 공간)";
+
+  return {
+    title: `따뜻한 온기로 공간을 채우는 프랑브아즈 감성 키즈 컬렉션`,
+    introduction: `우리 아이의 ${selectedPurpose}을 한층 포근하고 안전하게 가꾸어주는 프랑브아즈의 시그니처 키즈 리빙 아이템입니다. 은은하고 부드러운 뉴트럴 색감과 편안한 무드가 조화를 이루어 아이에게는 정서적 안정감을, 부모에게는 감각적인 인테리어 만족감을 함께 선사합니다.`,
+    advantages: [
+      "자연스럽고 차분한 파스텔 웜톤으로 어느 공간에나 부드럽게 어우러지는 감성 인테리어 디자인",
+      "아이의 연약한 피부와 정서적 휴식을 깊이 배려한 프랑브아즈만의 편안하고 안락한 촉감",
+      "일상적인 휴식부터 놀이 시간까지 실용적이고 다목적으로 활용 가능한 키즈 맞춤 설계"
+    ],
+    requiredChecks: [
+      "공식 판매 가격 및 패키지 프로모션 구성 [확인 필요]",
+      "상세 실측 규격(가로×세로×높이) 및 원단 세부 혼용률/인증 정보 [확인 필요]"
+    ],
+    relatedProducts: [
+      {
+        name: "프랑브아즈 오가닉 쁘띠 베개 커버 세트",
+        description: "동일한 웜톤 패브릭 라인으로 침실과 놀이 공간을 통일감 있고 포근하게 연출해 줍니다."
+      },
+      {
+        name: "프랑브아즈 내추럴 캔버스 수납 바스켓",
+        description: "아이의 장난감이나 소품들을 깔끔하고 감성적으로 정돈할 수 있는 필수 매칭 아이템입니다."
+      }
+    ]
+  };
+}
+
 // AI Product Proposal Card generation endpoint
 app.post("/api/generate-proposal", async (req, res) => {
   try {
@@ -46,30 +83,7 @@ app.post("/api/generate-proposal", async (req, res) => {
 
     const ai = getAiClient();
     if (!ai) {
-      // Fallback demo response if GEMINI_API_KEY is not configured
-      const fallbackResult = {
-        title: `포근한 일상을 선물하는 프랑브아즈 감성 키즈 컬렉션`,
-        introduction: `아이의 ${purpose || "소중한 공간"}을 한층 따뜻하고 아늑하게 채워주는 프랑브아즈의 시그니처 키즈 리빙 아이템입니다. 부드러운 색감과 안락한 무드가 조화를 이루어 아이에게는 편안한 안식처를, 부모에게는 감각적인 인테리어 만족감을 선사합니다.`,
-        advantages: [
-          "자연스럽고 따뜻한 뉴트럴 톤으로 어느 공간에나 조화롭게 어우러지는 감성 디자인",
-          "아이의 정서적 안정감과 편안한 휴식을 고려한 프랑브아즈만의 부드러운 터치감",
-          "일상적인 놀이와 휴식 공간 모두에서 실용적으로 활용 가능한 다목적 홈 리빙 아이템"
-        ],
-        requiredChecks: [
-          "정확한 판매 가격 및 프로모션 혜택 [확인 필요]",
-          "배치 공간에 알맞은 상세 실측 규격(치수) 및 원단 세부 혼용률 [확인 필요]"
-        ],
-        relatedProducts: [
-          {
-            name: "프랑브아즈 오가닉 코튼 베개 커버 세트",
-            description: "동일한 파스텔 웜톤으로 통일감을 주어 침실과 놀이 공간을 더욱 포근하게 연출할 수 있습니다."
-          },
-          {
-            name: "프랑브아즈 내추럴 캔버스 수납 바스켓",
-            description: "아이의 장난감이나 작은 소품들을 깔끔하고 감성적으로 정리할 수 있는 실용적인 매칭 아이템입니다."
-          }
-        ]
-      };
+      const fallbackResult = createFallbackProposal(purpose, tone);
       return res.json({ result: fallbackResult, isFallback: true });
     }
 
@@ -103,81 +117,118 @@ app.post("/api/generate-proposal", async (req, res) => {
 
 첨부된 제품 이미지를 바탕으로 위 규칙에 맞는 JSON 데이터를 생성해주세요.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: detectedMime,
-              data: cleanBase64,
-            },
-          },
-          {
-            text: userPrompt,
-          },
-        ],
-      },
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: {
-              type: Type.STRING,
-              description: "제품 제안 카드의 감각적인 제목 (1줄)",
-            },
-            introduction: {
-              type: Type.STRING,
-              description: "지정된 문체로 작성된 2~3문장의 따뜻하고 정돈된 소개글",
-            },
-            advantages: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: "제품의 장점 정확히 3개",
-            },
-            requiredChecks: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: "사진으로 알 수 없어 확인이 필요한 정보 2개 (가격/크기/소재/성능 등 추측 금지 항목, 반드시 '[확인 필요]' 포함)",
-            },
-            relatedProducts: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: {
-                    type: Type.STRING,
-                    description: "연관 제품명",
-                  },
-                  description: {
-                    type: Type.STRING,
-                    description: "연관 제품 추천 사유 및 믹스매치 팁",
-                  },
-                },
-                required: ["name", "description"],
+    const responseSchema = {
+      type: Type.OBJECT,
+      properties: {
+        title: {
+          type: Type.STRING,
+          description: "제품 제안 카드의 감각적인 제목 (1줄)",
+        },
+        introduction: {
+          type: Type.STRING,
+          description: "지정된 문체로 작성된 2~3문장의 따뜻하고 정돈된 소개글",
+        },
+        advantages: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "제품의 장점 정확히 3개",
+        },
+        requiredChecks: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "사진으로 알 수 없어 확인이 필요한 정보 2개 (가격/크기/소재/성능 등 추측 금지 항목, 반드시 '[확인 필요]' 포함)",
+        },
+        relatedProducts: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: {
+                type: Type.STRING,
+                description: "연관 제품명",
               },
-              description: "함께 제안할 연관 제품 2개",
+              description: {
+                type: Type.STRING,
+                description: "연관 제품 추천 사유 및 믹스매치 팁",
+              },
             },
+            required: ["name", "description"],
           },
-          required: ["title", "introduction", "advantages", "requiredChecks", "relatedProducts"],
+          description: "함께 제안할 연관 제품 2개",
         },
       },
-    });
+      required: ["title", "introduction", "advantages", "requiredChecks", "relatedProducts"],
+    };
 
-    const text = response.text;
-    if (!text) {
-      throw new Error("모델로부터 응답을 받지 못했습니다.");
+    let lastError: any = null;
+    let parsedResult = null;
+
+    // Try each candidate model with retry for high-demand spikes (503/429)
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        console.log(`프랑브아즈 AI 모델 시도: ${modelName}`);
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: detectedMime,
+                  data: cleanBase64,
+                },
+              },
+              {
+                text: userPrompt,
+              },
+            ],
+          },
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+            responseMimeType: "application/json",
+            responseSchema,
+          },
+        });
+
+        const text = response.text;
+        if (text) {
+          parsedResult = JSON.parse(text);
+          console.log(`성공적으로 생성 완료 (모델: ${modelName})`);
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`모델 ${modelName} 호출 실패:`, err?.message || err);
+        // Wait a short delay before trying the next model
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
     }
 
-    const parsed = JSON.parse(text);
-    return res.json({ result: parsed });
+    if (parsedResult) {
+      return res.json({ result: parsedResult });
+    }
+
+    // If all models failed due to 503 high demand or temporary server spike, provide safe fallback
+    console.error("모든 AI 모델 호출 실패, 안전한 추천 제안 카드로 대체합니다:", lastError?.message);
+    const fallback = createFallbackProposal(purpose, tone);
+    return res.json({
+      result: fallback,
+      isFallback: true,
+      notice: "현재 AI 모델 접속량이 급증하여 프랑브아즈 추천 큐레이션으로 먼저 생성되었습니다. 잠시 후 다시 생성해 보실 수 있습니다."
+    });
+
   } catch (error: any) {
-    console.error("AI 제안 생성 오류:", error);
+    console.error("AI 제안 처리 오류:", error);
+    let userMsg = "AI 제안 카드를 생성하는 도중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+    
+    // Parse JSON error message if present
+    const rawMsg = error?.message || "";
+    if (rawMsg.includes("503") || rawMsg.includes("high demand") || rawMsg.includes("UNAVAILABLE")) {
+      userMsg = "현재 AI 서버 접속량이 많아 일시적으로 지연되고 있습니다. 잠시 후 다시 시도해주세요.";
+    }
+
     return res.status(500).json({
-      error: error?.message || "AI 제안 카드를 생성하는 도중 오류가 발생했습니다.",
+      error: userMsg,
     });
   }
 });
