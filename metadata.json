@@ -1,0 +1,6 @@
+{
+  "name": "프랑브아즈 AI 제품 제안 카드",
+  "description": "키즈 리빙 브랜드 프랑브아즈의 제품 이미지와 사용 목적, 문체를 분석하여 맞춤형 AI 제품 제안 카드를 생성합니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
