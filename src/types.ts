@@ -1,6 +1,9 @@
 export interface RelatedProduct {
   name: string;
+  category?: string;
   description: string;
+  imageUrl?: string;
+  tag?: string;
 }
 
 export interface ProposalResult {

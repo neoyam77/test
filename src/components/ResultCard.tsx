@@ -9,8 +9,12 @@ import {
   HelpCircle,
   FileText,
   Layers,
+  ZoomIn,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { ProposalResult } from "../types";
+import { resolveRelatedProductImage } from "../data/matchingProducts";
 
 interface ResultCardProps {
   result: ProposalResult | null;
@@ -28,6 +32,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
   tone,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<{ url: string; title: string } | null>(null);
 
   const handleCopy = () => {
     if (!result) return;
@@ -255,35 +260,97 @@ ${result.introduction}
           </div>
         </div>
 
-        {/* 5. 연관 제품 2개 */}
+        {/* 5. 연관 제품 2개 (추천 매칭 + 제품 이미지 사진) */}
         <div>
-          <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-1.5 mb-3">
-            <ShoppingBag className="w-4 h-4 text-orange-500" />
-            <span>프랑브아즈 함께 스타일링할 연관 제품 (2가지)</span>
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {result.relatedProducts.map((prod, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-xl border border-neutral-200/90 bg-white hover:border-orange-300 transition-colors flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
-                    <h4 className="text-xs font-bold text-neutral-900">
-                      {prod.name}
-                    </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-1.5">
+              <ShoppingBag className="w-4 h-4 text-orange-500" />
+              <span>프랑브아즈 함께 스타일링할 연관 제품 (2가지)</span>
+            </h3>
+            <span className="text-[11px] text-neutral-400">
+              사진 클릭 시 확대 보기
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {result.relatedProducts.map((prod, idx) => {
+              const imageInfo = resolveRelatedProductImage(prod, idx);
+              const displayImg = prod.imageUrl || imageInfo.imageUrl;
+              const displayCategory = prod.category || imageInfo.category;
+              const displayTag = prod.tag || imageInfo.tag;
+
+              return (
+                <div
+                  key={idx}
+                  className="group rounded-xl border border-neutral-200/90 bg-white hover:border-orange-300 hover:shadow-xs transition-all overflow-hidden flex flex-col justify-between"
+                >
+                  {/* Recommended Product Photo Thumbnail */}
+                  <div
+                    className="relative w-full aspect-16/10 bg-neutral-100 overflow-hidden cursor-pointer"
+                    onClick={() =>
+                      setZoomedImage({
+                        url: displayImg,
+                        title: prod.name,
+                      })
+                    }
+                    title="클릭하여 제품 사진 확대"
+                  >
+                    <img
+                      src={displayImg}
+                      alt={prod.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {/* Category / Tag Pill */}
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/65 text-white backdrop-blur-xs">
+                        {displayCategory}
+                      </span>
+                    </div>
+
+                    {/* Hover Zoom Icon */}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="p-1.5 rounded-lg bg-white/90 text-neutral-800 shadow-xs flex items-center justify-center hover:bg-white">
+                        <ZoomIn className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-xs text-neutral-600 leading-relaxed">
-                    {prod.description}
-                  </p>
+
+                  <div className="p-3.5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-start justify-between gap-1.5 mb-1.5">
+                        <h4 className="text-xs sm:text-sm font-bold text-neutral-900 leading-snug">
+                          {prod.name}
+                        </h4>
+                      </div>
+                      <p className="text-xs text-neutral-600 leading-relaxed line-clamp-3">
+                        {prod.description}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-neutral-100 flex items-center justify-between text-[11px] text-orange-600 font-medium">
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                        {displayTag}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setZoomedImage({
+                            url: displayImg,
+                            title: prod.name,
+                          })
+                        }
+                        className="flex items-center gap-1 text-[11px] text-neutral-500 hover:text-orange-600 transition-colors cursor-pointer"
+                      >
+                        <ZoomIn className="w-3 h-3" />
+                        <span>사진 확대</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-3 pt-2 border-t border-neutral-100 flex items-center justify-between text-[11px] text-orange-600 font-medium">
-                  <span>추천 매칭</span>
-                  <Layers className="w-3 h-3" />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -293,6 +360,46 @@ ${result.introduction}
         <span>프랑브아즈(Framboise) 키즈 리빙 공식 AI 큐레이션</span>
         <span>© Framboise Kids Living</span>
       </div>
+
+      {/* Product Image Zoom Lightbox Modal */}
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                <h4 className="text-sm font-bold text-neutral-900">
+                  {zoomedImage.title}
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setZoomedImage(null)}
+                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="relative aspect-4/3 sm:aspect-16/10 bg-neutral-100">
+              <img
+                src={zoomedImage.url}
+                alt={zoomedImage.title}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="p-3 bg-neutral-50 text-center text-xs text-neutral-500">
+              프랑브아즈 추천 연관 제품 스타일링 사진
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
